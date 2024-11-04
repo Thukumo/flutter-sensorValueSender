@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/services.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(const MyApp());
@@ -52,6 +53,10 @@ class _MyHomePageState extends State<MyHomePage> {
         .listen((GyroscopeEvent event) {
       channel?.sink.add('r, ${event.x}, ${event.y}, ${event.z}');
     });
+  }
+
+  Future<bool> _requestPermissions() async {
+    return await Permission.sensors.request().isGranted;
   }
 
   void _connect() {
