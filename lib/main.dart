@@ -57,6 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  // ignore: unused_element
   Future<bool> _requestPermissions() async {
     return await Permission.sensors.request().isGranted;
   }
