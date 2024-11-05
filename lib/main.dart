@@ -46,7 +46,9 @@ class _MyHomePageState extends State<MyHomePage> {
         channel?.sink.add('g, ${event.x}, ${event.y}, ${event.z}');
         isConnectedString = 'Connected';
       } else {
-        isConnectedString = 'Not connected';
+        if (isConnectedString != "Failed to connect") {
+          isConnectedString = 'Not connected';
+        }
       }
     });
     gyroscopeEventStream(samplingPeriod: SensorInterval.fastestInterval)
