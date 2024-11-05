@@ -3,8 +3,11 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/services.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:camera/camera.dart';
+import 'dart:convert';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -40,6 +43,22 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    Permission.photos.status.then((status) {
+      if (status != PermissionStatus.granted) {
+        // 一度もリクエストしてないので権限のリクエスト.
+        Permission.photos.request().whenComplete(() {});
+      }
+    });
+    availableCameras().then((cameras) {
+      final cameraController =
+          CameraController(cameras.first, ResolutionPreset.medium);
+      cameraController.initialize().then((_) {
+        cameraController.startImageStream((image) {
+          channel?.sink
+              .add(base64Encode(Uint8List.fromList(image.planes[0].bytes)));
+        });
+      });
+    });
     userAccelerometerEventStream(samplingPeriod: SensorInterval.fastestInterval)
         .listen((UserAccelerometerEvent event) {
       if (channel != null) {
