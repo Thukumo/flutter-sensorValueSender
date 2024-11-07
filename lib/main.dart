@@ -37,35 +37,51 @@ class _MyHomePageState extends State<MyHomePage> {
   String isConnectedString = 'Not connected';
   String serverIP = '';
   String portNumber = '';
+
   @override
   void initState() {
     super.initState();
-    userAccelerometerEventStream(samplingPeriod: SensorInterval.fastestInterval)
-        .listen((UserAccelerometerEvent event) {
-      if (channel != null) {
-        channel?.sink.add('g, ${event.x}, ${event.y}, ${event.z}');
-        isConnectedString = 'Connected';
-      } else {
-        if (isConnectedString != "Failed to connect") {
-          isConnectedString = 'Not connected';
-        }
+    _requestPermissions().then((granted) {
+      if (granted) {
+        // 重力加速度を含む加速度
+        accelerometerEventStream(samplingPeriod: SensorInterval.fastestInterval)
+            .listen((event) {
+          if (channel != null) {
+            channel?.sink.add('a, ${event.x}, ${event.y}, ${event.z}');
+            isConnectedString = 'Connected';
+          } else {
+            isConnectedString = 'Not connected';
+          }
+        });
+
+        // 重力加速度を除いた純粋な加速度
+        userAccelerometerEventStream(
+                samplingPeriod: SensorInterval.fastestInterval)
+            .listen((event) {
+          channel?.sink.add('g, ${event.x}, ${event.y}, ${event.z}');
+        });
+
+        // ジャイロスコープ
+        gyroscopeEventStream(samplingPeriod: SensorInterval.fastestInterval)
+            .listen((GyroscopeEvent event) {
+          channel?.sink.add('r, ${event.x}, ${event.y}, ${event.z}');
+        });
       }
-    });
-    gyroscopeEventStream(samplingPeriod: SensorInterval.fastestInterval)
-        .listen((GyroscopeEvent event) {
-      channel?.sink.add('r, ${event.x}, ${event.y}, ${event.z}');
     });
   }
 
-  // ignore: unused_element
   Future<bool> _requestPermissions() async {
-    return await Permission.sensors.request().isGranted;
+    var status = await Permission.sensors.status;
+    if (status.isDenied) {
+      status = await Permission.sensors.request();
+    }
+    return status.isGranted;
   }
 
   void _connect() {
     try {
       channel = WebSocketChannel.connect(
-        Uri.parse('ws://$serverIP:$portNumber'),
+        Uri.parse('ws://$serverIP:$portNumber/data'),
       );
     } catch (e) {
       isConnectedString = 'Failed to connect';
@@ -86,26 +102,38 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            TextField(
-              autofocus: true,
-              controller: TextEditingController(),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Server IP address',
+            Container(
+              width: 280, // スマホ画面に適したサイズ
+              margin: const EdgeInsets.symmetric(vertical: 8), // 上下の余白
+              child: TextField(
+                autofocus: true,
+                controller: TextEditingController(),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Server IP address',
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onChanged: (text) => serverIP = text,
               ),
-              onChanged: (text) => serverIP = text,
             ),
-            TextField(
-              controller: TextEditingController(),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Port number',
+            Container(
+              width: 280, // スマホ画面に適したサイズ
+              margin: const EdgeInsets.symmetric(vertical: 8), // 上下の余白
+              child: TextField(
+                controller: TextEditingController(),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Port number',
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(5),
+                  FilteringTextInputFormatter.digitsOnly
+                ],
+                onChanged: (value) => portNumber = value,
               ),
-              inputFormatters: [
-                LengthLimitingTextInputFormatter(5),
-                FilteringTextInputFormatter.digitsOnly
-              ],
-              onChanged: (value) => portNumber = value,
             ),
             Text(
               'Connection status: $isConnectedString',
